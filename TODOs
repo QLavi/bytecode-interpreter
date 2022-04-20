@@ -1,0 +1,18 @@
+Apr 14, 2022 -- Done
+Understand error handling routines and fill up the error_at procedure.
+Seperate opcode and constant pushing mechanism that you implemented in machine.
+Complete expression parser.
+
+Apr 15, 2022 -- Done
+Refactor Expression Parser to be more easier to understand.
+Trace out Parser in action for test expression..
+
+Apr 18, 2022 -- Done
+Complete the documentation for the hash table in table.c add string interning.
+Optional: Implement a second hash table with separate chaining and try testing 
+both in Playground.. I am little lazy v_v
+
+Apr 20, 2022 -- Done
+Understand the cause mysterious invalid read bug it originated from
+vectors.c and affected constants reads and write.. cause I didn't allocate enough..
+"sizeof(type) * count" instead of "count"
