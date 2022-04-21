@@ -119,7 +119,7 @@ void adjust_table_cap(Table* table, int new_cap) {
 bool table_set(Table* table, Object_String* key, value val) {
 
   // if table cap can't accomodate the entries allocate more!
-  if(table->count +1 < table->cap * Table_Load_Factor) {
+  if(table->count +1 > table->cap * Table_Load_Factor) {
     int new_cap = table->cap * 2;
     adjust_table_cap(table, new_cap);
   }
