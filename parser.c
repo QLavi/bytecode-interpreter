@@ -423,6 +423,56 @@ static void parse_while_stmt(Env* env) {
   emit_byte(env, Op_Pop);
 }
 
+static void parse_var_decl(Env* env);
+static void parse_for_stmt(Env* env) {
+  locals_info.scope_depth += 1;
+
+  // initializer
+  if(match_token(Tk_Semicolon)) {
+
+  }
+  if(match_token(Tk_Let)) {
+    parse_var_decl(env);
+  }
+  else {
+    parse_expr_stmt(env);
+  }
+
+  i32 loop_start = env->stream.count;
+  i32 exit_jump = -1;
+  // condition
+  if(!match_token(Tk_Semicolon)) {
+    parse_expr(env, Prec_Assign);
+    consume_token(Tk_Semicolon, "Expect ';' after loop condition");
+
+    exit_jump = emit_jump(env, Op_Jump_If_False);
+    emit_byte(env, Op_Pop);
+  }
+
+  // update
+  if(!check_token(Tk_Left_Brace)) {
+    i32 body_jump = emit_jump(env, Op_Jump);
+    i32 inc_start = env->stream.count;
+
+    parse_expr(env, Prec_Assign);
+    emit_byte(env, Op_Pop);
+
+    emit_loop(env, loop_start);
+    loop_start = inc_start;
+    patch_jump(env, body_jump);
+  }
+
+  parse_stmt(env);
+  emit_loop(env, loop_start);
+
+  if(exit_jump != -1) {
+    patch_jump(env, exit_jump);
+    emit_byte(env, Op_Pop);
+  }
+
+  locals_info.scope_depth -= 1;
+}
+
 static void parse_decl(Env* env);
 static void parse_block(Env* env) {
   while(!check_token(Tk_Right_Brace) && !check_token(Tk_Eof)) {
@@ -450,6 +500,9 @@ static void parse_stmt(Env* env) {
   }
   else if(match_token(Tk_While)) {
     parse_while_stmt(env);
+  }
+  else if(match_token(Tk_For)) {
+    parse_for_stmt(env);
   }
   else if(match_token(Tk_Left_Brace)) {
     locals_info.scope_depth += 1;
