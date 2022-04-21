@@ -25,6 +25,9 @@ enum {
   Op_Get_Global,
   Op_Set_Local,
   Op_Get_Local,
+  Op_Jump_If_False,
+  Op_Jump,
+  Op_Loop,
 };
 typedef struct Env Env;
 struct Env {

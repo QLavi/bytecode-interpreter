@@ -24,6 +24,9 @@ static char* opc_to_str[] = {
   [Op_Get_Global] = "GET_GLOBAL",
   [Op_Set_Local] = "SET_LOCAL",
   [Op_Get_Local] = "GET_LOCAL",
+  [Op_Jump_If_False] = "JUMP_IF_FALSE",
+  [Op_Jump] = "JUMP",
+  [Op_Loop] = "LOOP",
 };
 
 void env_allocate(Env* env) {
@@ -115,6 +118,11 @@ static i32 opc_1byte(byte inst, i32 offset) {
   return offset +1;
 }
 
+static i32 opc_3byte(byte inst, i32 idx, i32 sign, i32 offset) {
+  printf("%04i  %-20s Jmp: %i\n", offset, opc_to_str[inst], offset + sign * idx +3);
+  return offset +3;
+}
+
 static void runtime_error(Env* env, char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
@@ -161,6 +169,14 @@ void env_print_instructions(Env* env) {
         idx = env->stream.data[offset +1];
         data = env->constants.data[idx];
         offset = opc_2byte(inst, data, idx, offset);
+      } break;
+      case Op_Loop:
+      case Op_Jump:
+      case Op_Jump_If_False: {
+        byte low = env->stream.data[offset +1];
+        byte high = env->stream.data[offset +2];
+        i32 idx = (low << 8) | high;
+        offset = opc_3byte(inst, idx, inst == Op_Loop ? -1 : 1, offset);
       } break;
       default:
         fprintf(stderr, "Invalid opcode found\n");
@@ -345,14 +361,30 @@ bool interpret(Env* env) {
         idx += 2;
       } break;
       case Op_Get_Local: {
-        uint8_t slot = ip[idx + 1];
+        uint8_t slot = ip[idx +1];
         eval_push(env, env->eval_stack.data[slot]);
         idx += 2;
       } break;
       case Op_Set_Local: {
-        uint8_t slot = ip[idx + 1];
+        uint8_t slot = ip[idx +1];
         env->eval_stack.data[slot] = eval_peek(env, 0);
         idx += 2;
+      } break;
+      case Op_Jump_If_False: {
+        i32 offset = (ip[idx +1] << 8) | ip[idx +2];
+        idx += 3;
+        if(is_falsey(eval_peek(env, 0)))
+          idx += offset;
+      } break;
+      case Op_Jump: {
+        i32 offset = (ip[idx +1] << 8) | ip[idx +2];
+        idx += 3;
+        idx += offset;
+      } break;
+      case Op_Loop: {
+        i32 offset = (ip[idx +1] << 8) | ip[idx +2];
+        idx += 3;
+        idx -= offset;
       } break;
       case Op_True: {
         eval_push(env, Value_Bool(true));
