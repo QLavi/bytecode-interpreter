@@ -132,8 +132,8 @@ Token next_token(void) {
     case '<': return make_token(match('=') ? Tk_Less_Equal : Tk_Less);
     case '>': return make_token(match('=') ? Tk_Greater_Equal : Tk_Greater);
     case '!': return make_token(match('=') ? Tk_Bang_Equal : Tk_Bang);
-    case '[': return make_token(match('[') ? Tk_Left_SqrParen2 : Tk_Left_SqrParen);
-    case ']': return make_token(match(']') ? Tk_Right_SqrParen2 : Tk_Right_SqrParen);
+    case '[': return make_token(Tk_Left_SqrParen);
+    case ']': return make_token(Tk_Right_SqrParen);
     case '(': return make_token(Tk_Left_Paren);
     case ')': return make_token(Tk_Right_Paren);
     case '{': return make_token(Tk_Left_Brace);

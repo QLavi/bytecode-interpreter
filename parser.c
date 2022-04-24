@@ -313,9 +313,7 @@ Parse_Rule rules[] = {
   [Tk_Left_Paren] =     {parse_group,   NULL,         Prec_None},
   [Tk_Right_Paren] =    {NULL,          NULL,         Prec_None},
   [Tk_Left_SqrParen] =  {parse_list,    parse_binary, Prec_Primary},
-  [Tk_Left_SqrParen2] = {NULL,          NULL,         Prec_None},
   [Tk_Right_SqrParen] = {NULL,          NULL,         Prec_None},
-  [Tk_Right_SqrParen2] ={NULL,          NULL,         Prec_None},
   [Tk_Comma] =          {NULL,          NULL,         Prec_None},
   [Tk_Semicolon] =      {NULL,          NULL,         Prec_None},
 
