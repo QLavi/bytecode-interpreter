@@ -49,15 +49,6 @@ void env_deallocate(Env* env) {
   free_objects(env);
 }
 
-void env_push_opcode(Env* env, byte opc) {
-  byte_vector_pushback(&env->stream, opc);
-}
-
-i32 env_push_constant(Env* env, value val) {
-  value_vector_pushback(&env->constants, val);
-  return env->constants.count -1;
-}
-
 static void eval_push(Env* env, value val) {
   value_vector_pushback(&env->eval_stack, val);
 }

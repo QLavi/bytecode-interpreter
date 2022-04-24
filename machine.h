@@ -43,8 +43,6 @@ struct Env {
 };
 
 void env_allocate(Env* env);
-void env_push_opcode(Env* env, byte opc);
-i32 env_push_constant(Env* env, value val);
 void env_print_instructions(Env* env);
 bool interpret(Env* env);
 void env_deallocate(Env* env);

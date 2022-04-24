@@ -94,40 +94,46 @@ static void consume_token(i32 match_kind, char* descr) {
 }
 
 // Bytecode emitting routines
-static void emit_byte(Env* env, byte b) {
-  env_push_opcode(env, b);
+
+void emit_1byte(Env* env, byte a) {
+  byte_vector_pushback(&env->stream, a);
 }
-static void emit_opcode_with_operand(Env* env, byte opc, byte opr) {
-  env_push_opcode(env, opc);
-  env_push_opcode(env, opr);
+void emit_2bytes(Env* env, byte a, byte b) {
+  byte_vector_pushback(&env->stream, a);
+  byte_vector_pushback(&env->stream, b);
 }
+void emit_3bytes(Env* env, byte a, byte b, byte c) {
+  byte_vector_pushback(&env->stream, a);
+  byte_vector_pushback(&env->stream, b);
+  byte_vector_pushback(&env->stream, c);
+}
+
 static void emit_constant(Env* env, value val) {
-  i32 idx = env_push_constant(env, val);
+  value_vector_pushback(&env->constants, val);
+  i32 idx = env->constants.count -1;
   if(idx > UINT8_MAX)
     error("Constant count > max constants count.. not allowed");
-  emit_opcode_with_operand(env, Op_Push_Constant, idx); 
+  emit_2bytes(env, Op_Push_Constant, idx); 
 }
 static uint8_t identifier_constant(Env* env, Token* name) {
-  return env_push_constant(env, Value_Object(object_string_cpy(env, name->str,
-    name->len)));
+  value_vector_pushback(&env->constants,
+    Value_Object(object_string_cpy(env, name->str, name->len)));
+  return env->constants.count -1;
 }
 
 static i32 emit_jump(Env* env, byte b) {
-  emit_byte(env, b);
   // placeholder jump address
-  emit_byte(env, 0xFF);
-  emit_byte(env, 0xFF);
+  emit_3bytes(env, b, 0xFF, 0xFF);
   return env->stream.count -2;
 }
 
 static void emit_loop(Env* env, i32 loop_start) {
-  emit_byte(env, Op_Loop);
+  emit_1byte(env, Op_Loop);
   i32 offset = env->stream.count -loop_start +2 ;
   if(offset > UINT16_MAX) {
     error("Loop body too large");
   }
-  emit_byte(env, (offset >> 8) & 0xFF);
-  emit_byte(env, offset & 0xFF);
+  emit_2bytes(env, (offset >> 8) & 0xFF, offset & 0xFF);
 }
 
 static void patch_jump(Env* env, i32 offset) {
@@ -181,8 +187,8 @@ static void parse_unary(Env* env, bool assignable) {
   parse_expr(env, Prec_Unary);
 
   switch(op_kind) {
-    case Tk_Minus: emit_byte(env, Op_Neg); break;
-    case Tk_Bang:  emit_byte(env, Op_Not); break;
+    case Tk_Minus: emit_1byte(env, Op_Neg); break;
+    case Tk_Bang:  emit_1byte(env, Op_Not); break;
     default: return;
   }
 }
@@ -190,9 +196,9 @@ static void parse_unary(Env* env, bool assignable) {
 static void parse_literal(Env* env, bool assignable) {
   (void)assignable;
   switch(parser.previous.kind) {
-    case Tk_True:   emit_byte(env, Op_True); break;
-    case Tk_False:  emit_byte(env, Op_False); break;
-    case Tk_Null:   emit_byte(env, Op_Null); break;
+    case Tk_True:   emit_1byte(env, Op_True); break;
+    case Tk_False:  emit_1byte(env, Op_False); break;
+    case Tk_Null:   emit_1byte(env, Op_Null); break;
     default: return;
   }
 }
@@ -235,41 +241,41 @@ static void parse_ident(Env* env, bool assignable) {
 
   if(match_token(Tk_Equal) && assignable) {
     parse_expr(env, Prec_Assign);
-    emit_opcode_with_operand(env, set_op, (uint8_t)idx);
+    emit_2bytes(env, set_op, (uint8_t)idx);
   }
   else if(match_token(Tk_Plus_Equal) && assignable) {
-    emit_opcode_with_operand(env, get_op, (uint8_t)idx);
+    emit_2bytes(env, get_op, (uint8_t)idx);
     parse_expr(env, Prec_Assign);
-    emit_byte(env, Op_Add);
-    emit_opcode_with_operand(env, set_op, (uint8_t)idx);
+    emit_1byte(env, Op_Add);
+    emit_2bytes(env, set_op, (uint8_t)idx);
   }
   else if(match_token(Tk_Minus_Equal) && assignable) {
-    emit_opcode_with_operand(env, get_op, (uint8_t)idx);
+    emit_2bytes(env, get_op, (uint8_t)idx);
     parse_expr(env, Prec_Assign);
-    emit_byte(env, Op_Sub);
-    emit_opcode_with_operand(env, set_op, (uint8_t)idx);
+    emit_1byte(env, Op_Sub);
+    emit_2bytes(env, set_op, (uint8_t)idx);
   }
   else if(match_token(Tk_Star_Equal) && assignable) {
-    emit_opcode_with_operand(env, get_op, (uint8_t)idx);
+    emit_2bytes(env, get_op, (uint8_t)idx);
     parse_expr(env, Prec_Assign);
-    emit_byte(env, Op_Mul);
-    emit_opcode_with_operand(env, set_op, (uint8_t)idx);
+    emit_1byte(env, Op_Mul);
+    emit_2bytes(env, set_op, (uint8_t)idx);
   }
   else if(match_token(Tk_Slash_Equal) && assignable) {
-    emit_opcode_with_operand(env, get_op, (uint8_t)idx);
+    emit_2bytes(env, get_op, (uint8_t)idx);
     parse_expr(env, Prec_Assign);
-    emit_byte(env, Op_Div);
-    emit_opcode_with_operand(env, set_op, (uint8_t)idx);
+    emit_1byte(env, Op_Div);
+    emit_2bytes(env, set_op, (uint8_t)idx);
   }
   else {
-    emit_opcode_with_operand(env, get_op, (uint8_t)idx);
+    emit_2bytes(env, get_op, (uint8_t)idx);
   }
 }
 
 static void parse_and(Env* env, bool assignable) {
   (void)assignable;
   i32 end_jump = emit_jump(env, Op_Jump_If_False);
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
 
   parse_expr(env, Prec_And);
   patch_jump(env, end_jump);
@@ -281,7 +287,7 @@ static void parse_or(Env* env, bool assignable) {
   i32 end_jump = emit_jump(env, Op_Jump);
 
   patch_jump(env, else_jump);
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
 
   parse_expr(env, Prec_Or);
   patch_jump(env, end_jump);
@@ -298,9 +304,9 @@ static void parse_list(Env* env, bool assignable) {
     elem_count += 1;
   }
   consume_token(Tk_Right_SqrParen, "Incomplete Set of [] seen");
-  emit_byte(env, Op_Build_List);
-  emit_byte(env, (elem_count >> 8) & 0xFF);
-  emit_byte(env, elem_count & 0xFF);
+  emit_1byte(env, Op_Build_List);
+  emit_1byte(env, (elem_count >> 8) & 0xFF);
+  emit_1byte(env, elem_count & 0xFF);
 }
 
 static void parse_binary(Env*, bool);
@@ -359,28 +365,28 @@ static void parse_binary(Env* env, bool assignable) {
   parse_expr(env, rules[op_kind].rbp);
 
   switch(op_kind) {
-    case Tk_Plus:         emit_byte(env, Op_Add); break;
-    case Tk_Minus:        emit_byte(env, Op_Sub); break;
-    case Tk_Star:         emit_byte(env, Op_Mul); break;
-    case Tk_Slash:        emit_byte(env, Op_Div); break;
-    case Tk_Less:         emit_byte(env, Op_Less); break;
-    case Tk_Greater:      emit_byte(env, Op_Greater); break;
-    case Tk_Equal_Equal:  emit_byte(env, Op_Equal); break;
+    case Tk_Plus:         emit_1byte(env, Op_Add); break;
+    case Tk_Minus:        emit_1byte(env, Op_Sub); break;
+    case Tk_Star:         emit_1byte(env, Op_Mul); break;
+    case Tk_Slash:        emit_1byte(env, Op_Div); break;
+    case Tk_Less:         emit_1byte(env, Op_Less); break;
+    case Tk_Greater:      emit_1byte(env, Op_Greater); break;
+    case Tk_Equal_Equal:  emit_1byte(env, Op_Equal); break;
     case Tk_Left_SqrParen: {
       consume_token(Tk_Right_SqrParen, "Missing ']' after indexing expression");
-      emit_byte(env, Op_List_Subscript);
+      emit_1byte(env, Op_List_Subscript);
     } break;
     case Tk_Less_Equal:
-      emit_byte(env, Op_Greater);
-      emit_byte(env, Op_Not);
+      emit_1byte(env, Op_Greater);
+      emit_1byte(env, Op_Not);
       break;
     case Tk_Greater_Equal:
-      emit_byte(env, Op_Less);
-      emit_byte(env, Op_Not);
+      emit_1byte(env, Op_Less);
+      emit_1byte(env, Op_Not);
       break;
     case Tk_Bang_Equal:
-      emit_byte(env, Op_Equal);
-      emit_byte(env, Op_Not);
+      emit_1byte(env, Op_Equal);
+      emit_1byte(env, Op_Not);
       break;
     default: return;
   }
@@ -407,12 +413,12 @@ static void parse_expr(Env* env, i32 lbp) {
 static void parse_print_stmt(Env* env) {
   parse_expr(env, Prec_Assign);
   consume_token(Tk_Semicolon, "Expect ';' after expression");
-  emit_byte(env, Op_Print);
+  emit_1byte(env, Op_Print);
 }
 static void parse_expr_stmt(Env* env) {
   parse_expr(env, Prec_Assign);
   consume_token(Tk_Semicolon, "Expect ';' after expression");
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
 }
 
 static void parse_stmt(Env* env);
@@ -420,12 +426,12 @@ static void parse_if_stmt(Env* env) {
   parse_expr(env, Prec_Assign);
 
   i32 then_jump = emit_jump(env, Op_Jump_If_False);
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
   parse_stmt(env);
 
   i32 else_jump = emit_jump(env, Op_Jump);
   patch_jump(env, then_jump);
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
 
   if(match_token(Tk_Else))
     parse_stmt(env);
@@ -437,12 +443,12 @@ static void parse_while_stmt(Env* env) {
   parse_expr(env, Prec_Assign);
 
   i32 exit_jump = emit_jump(env, Op_Jump_If_False);
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
   parse_stmt(env);
   emit_loop(env, loop_start);
 
   patch_jump(env, exit_jump);
-  emit_byte(env, Op_Pop);
+  emit_1byte(env, Op_Pop);
 }
 
 static void end_scope(Env* env);
@@ -469,7 +475,7 @@ static void parse_for_stmt(Env* env) {
     consume_token(Tk_Semicolon, "Expect ';' after loop condition");
 
     exit_jump = emit_jump(env, Op_Jump_If_False);
-    emit_byte(env, Op_Pop);
+    emit_1byte(env, Op_Pop);
   }
 
   // update
@@ -478,7 +484,7 @@ static void parse_for_stmt(Env* env) {
     i32 inc_start = env->stream.count;
 
     parse_expr(env, Prec_Assign);
-    emit_byte(env, Op_Pop);
+    emit_1byte(env, Op_Pop);
 
     emit_loop(env, loop_start);
     loop_start = inc_start;
@@ -490,7 +496,7 @@ static void parse_for_stmt(Env* env) {
 
   if(exit_jump != -1) {
     patch_jump(env, exit_jump);
-    emit_byte(env, Op_Pop);
+    emit_1byte(env, Op_Pop);
   }
   end_scope(env);
 }
@@ -508,7 +514,7 @@ static void end_scope(Env* env) {
 
   while(locals_info.count > 0 &&
     locals_info.locals[locals_info.count -1].active_on > locals_info.scope_depth) {
-    emit_byte(env, Op_Pop);
+    emit_1byte(env, Op_Pop);
     locals_info.count -= 1;
   }
 }
@@ -583,7 +589,7 @@ static void define_variable(Env* env, uint8_t idx, uint32_t local_idx) {
     mark_var_initialized(local_idx);
     return;
   }
-  emit_opcode_with_operand(env, Op_Define_Global, idx);
+  emit_2bytes(env, Op_Define_Global, idx);
 }
 
 static void parse_var_decl(Env* env) {
@@ -608,7 +614,7 @@ static void parse_var_decl(Env* env) {
     }
   }
   else
-    emit_byte(env, Op_Null);
+    emit_1byte(env, Op_Null);
   consume_token(Tk_Semicolon, "Expect ';' after expression");
 }
 
@@ -637,6 +643,6 @@ bool parse_and_gen_bytecode(Env* env, char* src) {
     parse_decl(env);
 
   consume_token(Tk_Eof, "Expected end of expression");
-  emit_byte(env, Op_Return);
+  emit_1byte(env, Op_Return);
   return !parser.had_error;
 }
