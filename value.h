@@ -3,6 +3,7 @@
 
 typedef struct Object Object;
 typedef struct Object_String Object_String;
+typedef struct Object_List Object_List;
 typedef enum {
   Vk_Error,
   Vk_Bool,

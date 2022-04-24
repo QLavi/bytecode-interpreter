@@ -27,6 +27,8 @@ static char* opc_to_str[] = {
   [Op_Jump_If_False] = "JUMP_IF_FALSE",
   [Op_Jump] = "JUMP",
   [Op_Loop] = "LOOP",
+  [Op_Build_List] = "BUILD_LIST",
+  [Op_List_Subscript] = "LIST_SUBSCRIPT"
 };
 
 void env_allocate(Env* env) {
@@ -71,7 +73,7 @@ static void eval_reset_stack(Env* env) {
   env->eval_stack.count = 0;
 }
 
-static void print_value(value data) {
+void print_value(value data) {
   switch(data.kind) {
     case Vk_Bool:
       printf("%s", Value_asBool(data) ? "true" : "false");
@@ -92,7 +94,7 @@ static void print_value(value data) {
   }
 }
 
-static i32 opc_2byte(byte inst, value data, i32 idx, i32 offset) {
+static i32 opcode_byte2(byte inst, value data, i32 idx, i32 offset) {
   printf("%04i  %-20s %i ", offset, opc_to_str[inst], idx);
   if(inst == Op_Define_Global || inst == Op_Get_Global) {
     printf("(");
@@ -113,13 +115,17 @@ static i32 opc_2byte(byte inst, value data, i32 idx, i32 offset) {
   return offset +2;
 }
 
-static i32 opc_1byte(byte inst, i32 offset) {
+static i32 opcode_byte1(byte inst, i32 offset) {
   printf("%04i  %-20s\n", offset, opc_to_str[inst]);
   return offset +1;
 }
 
-static i32 opc_3byte(byte inst, i32 idx, i32 sign, i32 offset) {
+static i32 opcode_jump(byte inst, i32 idx, i32 sign, i32 offset) {
   printf("%04i  %-20s Jmp: %i\n", offset, opc_to_str[inst], offset + sign * idx +3);
+  return offset +3;
+}
+static i32 opcode_byte3(byte inst, i32 idx, i32 offset) {
+  printf("%04i  %-20s %i\n", offset, opc_to_str[inst], idx);
   return offset +3;
 }
 
@@ -157,8 +163,9 @@ void env_print_instructions(Env* env) {
       case Op_Greater:
       case Op_Print:
       case Op_Pop:
+      case Op_List_Subscript:
       case Op_Return: {
-        offset = opc_1byte(inst, offset);
+        offset = opcode_byte1(inst, offset);
       } break;
       case Op_Define_Global:
       case Op_Set_Global:
@@ -168,7 +175,7 @@ void env_print_instructions(Env* env) {
       case Op_Push_Constant: {
         idx = env->stream.data[offset +1];
         data = env->constants.data[idx];
-        offset = opc_2byte(inst, data, idx, offset);
+        offset = opcode_byte2(inst, data, idx, offset);
       } break;
       case Op_Loop:
       case Op_Jump:
@@ -176,7 +183,13 @@ void env_print_instructions(Env* env) {
         byte low = env->stream.data[offset +1];
         byte high = env->stream.data[offset +2];
         i32 idx = (low << 8) | high;
-        offset = opc_3byte(inst, idx, inst == Op_Loop ? -1 : 1, offset);
+        offset = opcode_jump(inst, idx, inst == Op_Loop ? -1 : 1, offset);
+      } break;
+      case Op_Build_List: {
+        byte low = env->stream.data[offset +1];
+        byte high = env->stream.data[offset +2];
+        i32 idx = (low << 8) | high;
+        offset = opcode_byte3(inst, idx, offset);
       } break;
       default:
         fprintf(stderr, "Invalid opcode found\n");
@@ -218,6 +231,19 @@ void concatenate_strings(Env* env) {
 
   Object_String* str = take_string(env, concat, len);
   eval_push(env, Value_Object(str));
+}
+
+void build_list(Env* env, i32 elem_count) {
+  i32 start_idx = env->eval_stack.count - elem_count;
+  i32 end_idx = start_idx + elem_count;
+  Object_List* list = allocate_list(env);
+  for(i32 x = start_idx; x < end_idx; x+=1) {
+    value_vector_pushback(&list->vector, eval_peek(env, (elem_count -1) - x));
+  }
+  for(i32 x = 0; x < elem_count; x+=1) {
+    eval_pop(env);
+  }
+  eval_push(env, Value_Object(list));
 }
 
 bool interpret(Env* env) { 
@@ -330,6 +356,22 @@ bool interpret(Env* env) {
         value val = env->constants.data[ip[idx +1]];
         eval_push(env, val);
         idx += 2;
+      } break;
+      case Op_Build_List: {
+        i32 elem_count = (ip[idx +1] << 8) | ip[idx +2];
+        build_list(env, elem_count);
+        idx += 3;
+      } break;
+      case Op_List_Subscript: {
+        if(!Object_isList(eval_peek(env, 1)) && !Value_isNumber(eval_peek(env, 0))) {
+          runtime_error(env, "%s: Either Object is not subscriptable or Index is not a number", opc_to_str[inst], eval_peek(env, 0));
+          return false;
+        }
+        value index = eval_pop(env);
+        value list = eval_pop(env);
+        value elem = Object_asList(list)->vector.data[(i32)(index.number)];
+        eval_push(env, elem);
+        idx += 1;
       } break;
       case Op_Define_Global: {
         Object_String* name = Object_asString(env->constants.data[ip[idx +1]]);

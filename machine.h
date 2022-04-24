@@ -28,6 +28,8 @@ enum {
   Op_Jump_If_False,
   Op_Jump,
   Op_Loop,
+  Op_Build_List,
+  Op_List_Subscript,
 };
 typedef struct Env Env;
 struct Env {
@@ -46,4 +48,4 @@ i32 env_push_constant(Env* env, value val);
 void env_print_instructions(Env* env);
 bool interpret(Env* env);
 void env_deallocate(Env* env);
-
+void print_value(value data);

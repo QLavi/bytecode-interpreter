@@ -4,6 +4,7 @@
 enum {
   Tk_Error, Tk_Eof,
   Tk_Right_Brace, Tk_Left_Brace, Tk_Left_Paren, Tk_Right_Paren,
+  Tk_Left_SqrParen, Tk_Right_SqrParen, Tk_Left_SqrParen2, Tk_Right_SqrParen2,
   Tk_Comma, Tk_Semicolon,
 
   Tk_Plus, Tk_Minus, Tk_Star, Tk_Slash,

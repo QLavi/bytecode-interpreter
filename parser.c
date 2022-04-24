@@ -287,52 +287,72 @@ static void parse_or(Env* env, bool assignable) {
   patch_jump(env, end_jump);
 }
 
+static void parse_list(Env* env, bool assignable) {
+  (void)assignable;
+  i32 elem_count = 0;
+  parse_expr(env, Prec_Assign);
+  elem_count += 1;
+  while(!check_token(Tk_Right_SqrParen)) {
+    consume_token(Tk_Comma, "Missing ',' after expression in a list");
+    parse_expr(env, Prec_Assign);
+    elem_count += 1;
+  }
+  consume_token(Tk_Right_SqrParen, "Incomplete Set of [] seen");
+  emit_byte(env, Op_Build_List);
+  emit_byte(env, (elem_count >> 8) & 0xFF);
+  emit_byte(env, elem_count & 0xFF);
+}
+
 static void parse_binary(Env*, bool);
 
 Parse_Rule rules[] = {
-  [Tk_Error] =        {NULL,          NULL,         Prec_None},
-  [Tk_Eof] =          {NULL,          NULL,         Prec_None},
-  [Tk_Right_Brace] =  {NULL,          NULL,         Prec_None},
-  [Tk_Left_Brace] =   {NULL,          NULL,         Prec_None},
-  [Tk_Left_Paren] =   {parse_group,   NULL,         Prec_None},
-  [Tk_Right_Paren] =  {NULL,          NULL,         Prec_None},
-  [Tk_Comma] =        {NULL,          NULL,         Prec_None},
-  [Tk_Semicolon] =    {NULL,          NULL,         Prec_None},
+  [Tk_Error] =          {NULL,          NULL,         Prec_None},
+  [Tk_Eof] =            {NULL,          NULL,         Prec_None},
+  [Tk_Right_Brace] =    {NULL,          NULL,         Prec_None},
+  [Tk_Left_Brace] =     {NULL,          NULL,         Prec_None},
+  [Tk_Left_Paren] =     {parse_group,   NULL,         Prec_None},
+  [Tk_Right_Paren] =    {NULL,          NULL,         Prec_None},
+  [Tk_Left_SqrParen] =  {parse_list,    parse_binary, Prec_Primary},
+  [Tk_Left_SqrParen2] = {NULL,          NULL,         Prec_None},
+  [Tk_Right_SqrParen] = {NULL,          NULL,         Prec_None},
+  [Tk_Right_SqrParen2] ={NULL,          NULL,         Prec_None},
+  [Tk_Comma] =          {NULL,          NULL,         Prec_None},
+  [Tk_Semicolon] =      {NULL,          NULL,         Prec_None},
 
-  [Tk_Plus] =         {NULL,          parse_binary, Prec_Term},
-  [Tk_Minus] =        {parse_unary,   parse_binary, Prec_Term},
-  [Tk_Star] =         {NULL,          parse_binary, Prec_Factor},
-  [Tk_Slash] =        {NULL,          parse_binary, Prec_Factor},
-  [Tk_Bang] =         {parse_unary,   NULL,         Prec_Unary},
-  [Tk_Bang_Equal] =   {NULL,          parse_binary, Prec_Equality},
-  [Tk_Equal] =        {NULL,          NULL,         Prec_None},
-  [Tk_Plus_Equal] =   {NULL,          NULL,         Prec_None},
-  [Tk_Minus_Equal] =  {NULL,          NULL,         Prec_None},
-  [Tk_Star_Equal] =   {NULL,          NULL,         Prec_None},
-  [Tk_Slash_Equal] =  {NULL,          NULL,         Prec_None},
-  [Tk_Equal_Equal] =  {NULL,          parse_binary, Prec_Equality},
-  [Tk_Less] =         {NULL,          parse_binary, Prec_Comparison},
-  [Tk_Less_Equal] =   {NULL,          parse_binary, Prec_Comparison},
-  [Tk_Greater] =      {NULL,          parse_binary, Prec_Comparison},
-  [Tk_Greater_Equal] ={NULL,          parse_binary, Prec_Comparison},
-  [Tk_And] =          {NULL,          parse_and,    Prec_And},
-  [Tk_Or] =           {NULL,          parse_or,     Prec_Or},
+  [Tk_Plus] =           {NULL,          parse_binary, Prec_Term},
+  [Tk_Minus] =          {parse_unary,   parse_binary, Prec_Term},
+  [Tk_Star] =           {NULL,          parse_binary, Prec_Factor},
+  [Tk_Slash] =          {NULL,          parse_binary, Prec_Factor},
+  [Tk_Bang] =           {parse_unary,   NULL,         Prec_Unary},
+  [Tk_Bang_Equal] =     {NULL,          parse_binary, Prec_Equality},
+  [Tk_Equal] =          {NULL,          NULL,         Prec_None},
+  [Tk_Plus_Equal] =     {NULL,          NULL,         Prec_None},
+  [Tk_Minus_Equal] =    {NULL,          NULL,         Prec_None},
+  [Tk_Star_Equal] =     {NULL,          NULL,         Prec_None},
+  [Tk_Slash_Equal] =    {NULL,          NULL,         Prec_None},
+  [Tk_Equal_Equal] =    {NULL,          parse_binary, Prec_Equality},
+  [Tk_Less] =           {NULL,          parse_binary, Prec_Comparison},
+  [Tk_Less_Equal] =     {NULL,          parse_binary, Prec_Comparison},
+  [Tk_Greater] =        {NULL,          parse_binary, Prec_Comparison},
+  [Tk_Greater_Equal] =  {NULL,          parse_binary, Prec_Comparison},
+  [Tk_And] =            {NULL,          parse_and,    Prec_And},
+  [Tk_Or] =             {NULL,          parse_or,     Prec_Or},
 
-  [Tk_Identifier] =   {parse_ident,   NULL,         Prec_None},
-  [Tk_String] =       {parse_string,  NULL,         Prec_None},
-  [Tk_Number] =       {parse_number,  NULL,         Prec_None},
-  [Tk_True] =         {parse_literal, NULL,         Prec_None},
-  [Tk_False] =        {parse_literal, NULL,         Prec_None},
-  [Tk_Null] =         {parse_literal, NULL,         Prec_None},
+  [Tk_Identifier] =     {parse_ident,   NULL,         Prec_None},
+  [Tk_String] =         {parse_string,  NULL,         Prec_None},
+  [Tk_Number] =         {parse_number,  NULL,         Prec_None},
+  [Tk_True] =           {parse_literal, NULL,         Prec_None},
+  [Tk_False] =          {parse_literal, NULL,         Prec_None},
+  [Tk_Null] =           {parse_literal, NULL,         Prec_None},
 
-  [Tk_For] =          {NULL,          NULL,         Prec_None},
-  [Tk_While] =        {NULL,          NULL,         Prec_None},
-  [Tk_If] =           {NULL,          NULL,         Prec_None},
-  [Tk_Else] =         {NULL,          NULL,         Prec_None},
-  [Tk_Print] =        {NULL,          NULL,         Prec_None},
-  [Tk_Def] =          {NULL,          NULL,         Prec_None},
-  [Tk_Return] =       {NULL,          NULL,         Prec_None},
-  [Tk_Let] =          {NULL,          NULL,         Prec_None},
+  [Tk_For] =            {NULL,          NULL,         Prec_None},
+  [Tk_While] =          {NULL,          NULL,         Prec_None},
+  [Tk_If] =             {NULL,          NULL,         Prec_None},
+  [Tk_Else] =           {NULL,          NULL,         Prec_None},
+  [Tk_Print] =          {NULL,          NULL,         Prec_None},
+  [Tk_Def] =            {NULL,          NULL,         Prec_None},
+  [Tk_Return] =         {NULL,          NULL,         Prec_None},
+  [Tk_Let] =            {NULL,          NULL,         Prec_None},
 };
 
 static void parse_binary(Env* env, bool assignable) {
@@ -348,6 +368,10 @@ static void parse_binary(Env* env, bool assignable) {
     case Tk_Less:         emit_byte(env, Op_Less); break;
     case Tk_Greater:      emit_byte(env, Op_Greater); break;
     case Tk_Equal_Equal:  emit_byte(env, Op_Equal); break;
+    case Tk_Left_SqrParen: {
+      consume_token(Tk_Right_SqrParen, "Missing ']' after indexing expression");
+      emit_byte(env, Op_List_Subscript);
+    } break;
     case Tk_Less_Equal:
       emit_byte(env, Op_Greater);
       emit_byte(env, Op_Not);
@@ -423,6 +447,7 @@ static void parse_while_stmt(Env* env) {
   emit_byte(env, Op_Pop);
 }
 
+static void end_scope(Env* env);
 static void parse_var_decl(Env* env);
 static void parse_for_stmt(Env* env) {
   locals_info.scope_depth += 1;
@@ -469,8 +494,7 @@ static void parse_for_stmt(Env* env) {
     patch_jump(env, exit_jump);
     emit_byte(env, Op_Pop);
   }
-
-  locals_info.scope_depth -= 1;
+  end_scope(env);
 }
 
 static void parse_decl(Env* env);

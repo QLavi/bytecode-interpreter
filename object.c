@@ -22,6 +22,10 @@ void free_object(Object* object) {
       FREE(str->str);
       FREE(object);
     } break;
+    case Ok_List: {
+      Object_List* list = (Object_List*)object;
+      value_vector_deallocate(&list->vector);
+    } break;
   }
 }
 
@@ -67,10 +71,29 @@ Object_String* object_string_cpy(Env* env, char* str, int len) {
   return allocate_string(env, heap_str, len, hash);
 }
 
+Object_List* allocate_list(Env* env) {
+  Object_List* list = (Object_List*)allocate_object(env, sizeof(Object_List), Ok_List);
+  value_vector_allocate(&list->vector);
+  return list;
+}
+
+void print_list(value val) {
+  putc('[', stdout);
+  Object_List* list = Object_asList(val);
+  print_value(list->vector.data[0]);
+  for(i32 x = 1; x < list->vector.count; x+=1) {
+    printf(", ");
+    print_value(list->vector.data[x]);
+  }
+  putc(']', stdout);
+}
+
 void print_object(value val) {
   switch(Get_Object_Kind(val)) {
     case Ok_String:
       printf("%s", Get_Object_CString(val));
       break;
+    case Ok_List:
+      print_list(val);
   }
 }
