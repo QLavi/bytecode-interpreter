@@ -35,9 +35,10 @@ i32 main(i32 argc, char** argv) {
 
   Env env;
   env_allocate(&env);
+
   bool ok = parse_and_gen_bytecode(&env, src);
   if(ok) {
-    // env_print_instructions(&env);
+    env_print_instructions(&env);
     bool iok = interpret(&env);
     if(!iok) {
       fprintf(stderr, "Interpeter Error.. Aborting\n");

@@ -66,9 +66,7 @@ static i32 identifier_or_keyword_kind() {
     case 'e': return check_keyword(1, 3, "lse", Tk_Else);
     case 'w': return check_keyword(1, 4, "hile", Tk_While);
     case 't': return check_keyword(1, 3, "rue", Tk_True);
-    case 'd': return check_keyword(1, 2, "ef", Tk_Def);
     case 'n': return check_keyword(1, 3, "ull", Tk_Null);
-    case 'p': return check_keyword(1, 3, "rint", Tk_Print);
     case 'r': return check_keyword(1, 5, "eturn", Tk_Return);
     case 'l': return check_keyword(1, 2, "et", Tk_Let);
     case 'f': {
@@ -76,6 +74,20 @@ static i32 identifier_or_keyword_kind() {
         switch(lexer.begin[1]) {
           case 'a': return check_keyword(2, 3, "lse", Tk_False);
           case 'o': return check_keyword(2, 1, "r", Tk_For);
+        }
+      }
+    } break;
+    case 'p': {
+      if(lexer.current - lexer.begin > 1) {
+        switch(lexer.begin[1]) {
+          case 'r': {
+            if(lexer.current - lexer.begin > 1) {
+              switch(lexer.begin[2]) {
+                case 'i': return check_keyword(3, 2, "nt", Tk_Print);
+                case 'o': return check_keyword(3, 1, "c", Tk_Proc);
+              }
+            }
+          } break;
         }
       }
     } break;

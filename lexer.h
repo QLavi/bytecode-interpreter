@@ -17,7 +17,7 @@ enum {
   Tk_True, Tk_False,
 
   Tk_For, Tk_While, Tk_If, Tk_Else,
-  Tk_Print, Tk_Def, Tk_Return, Tk_Let, Tk_Null
+  Tk_Print, Tk_Proc, Tk_Return, Tk_Let, Tk_Null
 };
 
 typedef struct {

@@ -24,7 +24,17 @@ void free_object(Object* object) {
     } break;
     case Ok_List: {
       Object_List* list = (Object_List*)object;
+      for(i32 x=0; x<list->vector.count; x+=1) {
+        value v = list->vector.data[x];
+        if(Value_isObject(v))
+          free_object(Value_asObject(v));
+      }
       value_vector_deallocate(&list->vector);
+    } break;
+    case Ok_Function: {
+      Object_Function* fn = (Object_Function*)object;
+      free_object((Object*)fn->name);
+      byte_vector_deallocate(&fn->code);
     } break;
   }
 }
@@ -77,6 +87,15 @@ Object_List* allocate_list(Env* env) {
   return list;
 }
 
+
+Object_Function* make_function(Env* env) {
+  Object_Function* fn = (Object_Function*)allocate_object(env, sizeof(Object_Function), Ok_Function);
+  byte_vector_allocate(&fn->code);
+  fn->name = NULL;
+  fn->arity = 0;
+  return fn;
+}
+
 void print_list(value val) {
   putc('[', stdout);
   Object_List* list = Object_asList(val);
@@ -88,6 +107,10 @@ void print_list(value val) {
   putc(']', stdout);
 }
 
+void print_function(value fn) {
+  printf("<%s fn>", Object_asFunction(fn)->name->str);
+}
+
 void print_object(value val) {
   switch(Get_Object_Kind(val)) {
     case Ok_String:
@@ -95,5 +118,8 @@ void print_object(value val) {
       break;
     case Ok_List:
       print_list(val);
+      break;
+    case Ok_Function:
+      print_function(val);
   }
 }

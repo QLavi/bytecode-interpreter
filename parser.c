@@ -61,7 +61,7 @@ static void parser_sync(void) {
   while(parser.current.kind != Tk_Eof) {
     if(parser.previous.kind == Tk_Semicolon) return;
     switch(parser.current.kind) {
-      case Tk_Def:
+      case Tk_Proc:
       case Tk_Let:
       case Tk_For:
       case Tk_While:
@@ -354,7 +354,7 @@ Parse_Rule rules[] = {
   [Tk_If] =             {NULL,          NULL,         Prec_None},
   [Tk_Else] =           {NULL,          NULL,         Prec_None},
   [Tk_Print] =          {NULL,          NULL,         Prec_None},
-  [Tk_Def] =            {NULL,          NULL,         Prec_None},
+  [Tk_Proc] =            {NULL,          NULL,         Prec_None},
   [Tk_Return] =         {NULL,          NULL,         Prec_None},
   [Tk_Let] =            {NULL,          NULL,         Prec_None},
 };
